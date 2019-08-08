@@ -10,7 +10,9 @@
 Module.register('SmartMirror-Person-Recognition',{
 
 	defaults: {
-		
+		// camera image size. This module has no image output!
+		image_height: 1080,
+		image_width: 1920
 	},
 
 	start: function() {

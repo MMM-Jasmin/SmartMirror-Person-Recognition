@@ -3,11 +3,35 @@ import random
 import cv2
 import json, sys 
 
+def to_node(type, message):
+	# convert to json and print (node helper will read from stdout)
+	try:
+		print(json.dumps({type: message}))
+	except Exception:
+		pass
+	# stdout has to be flushed manually to prevent delays in the node helper communication
+	sys.stdout.flush()
+
+#Full HD image as default
+IMAGE_HEIGHT = 1080
+IMAGE_WIDTH = 1920
+
+try:
+	to_node("status", "starting with config: " + sys.argv[1])
+	config = json.loads(sys.argv[1])
+	if 'image_height' in config:
+		IMAGE_HEIGHT = int(config['image_height'])
+	if 'image_width' in config:
+		IMAGE_WIDTH = int(config['image_width'])
+except:
+	to_node("status", "starting without config as it was not readable/existent")	
+
+
 def convertBack(x, y, w, h):
-	x = x * 1080
-	y = y * 1920
-	w = w * 1080
-	h = h * 1920
+	x = x * IMAGE_WIDTH
+	y = y * IMAGE_HEIGHT
+	w = w * IMAGE_WIDTH
+	h = h * IMAGE_HEIGHT
 	xmin = int(round(x - (w / 2)))
 	xmax = int(round(x + (w / 2)))
 	ymin = int(round(y - (h / 2)))
@@ -34,7 +58,7 @@ def contains(r1, r2):
 	return r1[0][0] < r2[0][0] < r2[1][0] < r1[1][0] and r1[0][1] < r2[0][1] < r2[1][1] < r1[1][1]
 
 
-to_node("status","starting..")
+to_node("status","Entering main loop")
 
 while True:
 
@@ -44,6 +68,7 @@ while True:
 	data = json.loads(lines)
 	if 'DETECTED_FACES' in data:
 		dict_faces = data['DETECTED_FACES']
+		#to_node("status", data['DETECTED_FACES'])
 		for face in dict_faces:
 
 			rect_face = convertBack(face["center"][0], face["center"][1], face["w_h"][0], face["w_h"][1] )
@@ -81,30 +106,27 @@ while True:
 	elif 'DETECTED_OBJECTS' in data:
 		dict_objects = data['DETECTED_OBJECTS']
 		#to_node("status", data['DETECTED_OBJECTS'])
+		
+		new_PersonDict = {}
 		for element in dict_objects:
 			if element["name"] == "person":
 				if not element["TrackID"] in person_dict:
-					person_dict[element["TrackID"]] = element.copy()
+					new_PersonDict[element["TrackID"]] = element.copy()
 					changed_values = True
 					to_node("status", "new person was found")
 				else: 
-					if not person_dict[element["TrackID"]]["center"] == element["center"]:
-						person_dict[element["TrackID"]]["center"] = element["center"]
+					new_PersonDict[element["TrackID"]] = person_dict[element["TrackID"]]
+					if not new_PersonDict[element["TrackID"]]["center"] == element["center"]:
+						new_PersonDict[element["TrackID"]]["center"] = element["center"]
 						changed_values = True
-					if not person_dict[element["TrackID"]]["w_h"] == element["w_h"]:
-						person_dict[element["TrackID"]]["w_h"] = element["w_h"]
+					if not new_PersonDict[element["TrackID"]]["w_h"] == element["w_h"]:
+						new_PersonDict[element["TrackID"]]["w_h"] = element["w_h"]
 						changed_values = True
-				
-		for person in person_dict.keys():
-			found = False
-			for element in dict_objects:
-				if element["name"] == "person" and element["TrackID"] == person_dict[person]["TrackID"]:
-					found = True
-			if found is False:
-				to_node("status", "person was lost")
-				person_dict.pop(person)
-				changed_values = True
-
+						
+		if not (len(new_PersonDict) == len(person_dict)):
+			changed_values = True
+			
+		person_dict = new_PersonDict
+		
 	if changed_values:
 		to_node("RECOGNIZED_PERSONS", person_dict)
-	

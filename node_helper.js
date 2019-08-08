@@ -10,7 +10,7 @@ module.exports = NodeHelper.create({
 		const self = this;		
 
 		
-		self.pyshell = new PythonShell('modules/' + this.name + '/python/person_recognition.py', {pythonPath: 'python',  args: [JSON.stringify(this.config)]});
+		self.pyshell = new PythonShell('modules/' + this.name + '/python/person_recognition.py', {pythonPath: 'python3',  args: [JSON.stringify(this.config)]});
     		
 		self.pyshell.on('message', function (message_string) {
 			try{
@@ -31,7 +31,8 @@ module.exports = NodeHelper.create({
 
   	// Subclass socketNotificationReceived received.
   	socketNotificationReceived: function(notification, payload) {
-		const self = this;	
+		const self = this;
+		//console.log("[" + self.name + "] " + notification + " " + JSON.stringify(payload));	
 		if (notification === 'DETECTED_GESTURES'){
 			self.pyshell.send(JSON.stringify(payload));
 		}else if (notification === 'DETECTED_OBJECTS'){
