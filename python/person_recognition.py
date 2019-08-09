@@ -2,6 +2,7 @@ import math
 import random
 import cv2
 import json, sys 
+import numpy as np
 
 def to_node(type, message):
 	# convert to json and print (node helper will read from stdout)
@@ -56,7 +57,21 @@ person_dict = {}
 def contains(r1, r2):
 	# return r1.x1 < r2.x1 < r2.x2 < r1.x2 and r1.y1 < r2.y1 < r2.y2 < r1.y2
 	return r1[0][0] < r2[0][0] < r2[1][0] < r1[1][0] and r1[0][1] < r2[0][1] < r2[1][1] < r1[1][1]
-
+	
+def get_intersection_ratio(bb_a,bb_b):
+	"""
+	Computes ratio of area of bbox b in a of boxform [[x1,y1],[x2,y2]]
+	"""
+	xx1 = np.maximum(bb_a[0][0], bb_b[0][0])
+	yy1 = np.maximum(bb_a[0][1], bb_b[0][1])
+	xx2 = np.minimum(bb_a[1][0], bb_b[1][0])
+	yy2 = np.minimum(bb_a[1][1], bb_b[1][1])
+	w = np.maximum(0., xx2 - xx1)
+	h = np.maximum(0., yy2 - yy1)
+	wh = w * h
+	o = wh / ((bb_b[1][0]-bb_b[0][0])*(bb_b[1][1]-bb_b[0][1]))
+	#o = wh / ((bb_test[1][0]-bb_test[0][0])*(bb_test[1][1]-bb_test[0][1]) + (bb_gt[1][0]-bb_gt[0][0])*(bb_gt[1][1]-bb_gt[0][1]) - wh)
+	return(o)
 
 to_node("status","Entering main loop")
 
@@ -103,6 +118,27 @@ while True:
 	elif 'DETECTED_GESTURES' in data:
 		dict_gestures = data['DETECTED_GESTURES']
 		#to_node("status", data['DETECTED_GESTURES'])
+		
+		for person in person_dict.keys():
+			if "gestures" in person_dict[person]:
+				person_dict[person].pop("gestures")
+			
+			rect_person = convertBack(person_dict[person]["center"][0], person_dict[person]["center"][1], person_dict[person]["w_h"][0], person_dict[person]["w_h"][1])
+		
+			for gesture in dict_gestures:
+			
+				rect_gesture = convertBack(gesture["center"][0], gesture["center"][1], gesture["w_h"][0], gesture["w_h"][1])
+							
+				ir = get_intersection_ratio(rect_person,rect_gesture)
+				
+				if ir > 0.5:
+					if "gestures" in person_dict[person]:
+						person_dict[person]["gestures"].append(gesture)
+					else:
+						person_dict[person]["gestures"] = [gesture]
+						
+		
+		
 	elif 'DETECTED_OBJECTS' in data:
 		dict_objects = data['DETECTED_OBJECTS']
 		#to_node("status", data['DETECTED_OBJECTS'])
