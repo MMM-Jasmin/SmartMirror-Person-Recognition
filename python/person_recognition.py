@@ -122,6 +122,7 @@ while True:
 		for person in person_dict.keys():
 			if "gestures" in person_dict[person]:
 				person_dict[person].pop("gestures")
+				changed_values = True
 			
 			rect_person = convertBack(person_dict[person]["center"][0], person_dict[person]["center"][1], person_dict[person]["w_h"][0], person_dict[person]["w_h"][1])
 		
@@ -136,7 +137,7 @@ while True:
 						person_dict[person]["gestures"].append(gesture)
 					else:
 						person_dict[person]["gestures"] = [gesture]
-						
+						changed_values = True					
 		
 		
 	elif 'DETECTED_OBJECTS' in data:
