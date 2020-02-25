@@ -3,6 +3,7 @@ import random
 import cv2
 import json, sys 
 import numpy as np
+import time
 
 def to_node(type, message):
 	# convert to json and print (node helper will read from stdout)
@@ -74,6 +75,8 @@ def get_intersection_ratio(bb_a,bb_b):
 	return(o)
 
 to_node("status","Entering main loop")
+
+last_publish_time = 0;
 
 while True:
 
@@ -165,5 +168,8 @@ while True:
 			
 		person_dict = new_PersonDict
 		
-	if changed_values:
+		last_publish_time = time.time()
+		
+	if changed_values or ((last_publish_time + 5000)  < time.time()):
 		to_node("RECOGNIZED_PERSONS", person_dict)
+		last_publish_time = time.time();
