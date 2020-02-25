@@ -74,6 +74,31 @@ def get_intersection_ratio(bb_a,bb_b):
 	#o = wh / ((bb_test[1][0]-bb_test[0][0])*(bb_test[1][1]-bb_test[0][1]) + (bb_gt[1][0]-bb_gt[0][0])*(bb_gt[1][1]-bb_gt[0][1]) - wh)
 	return(o)
 
+def bb_intersection_over_union(boxA, boxB):
+	# determine the (x, y)-coordinates of the intersection rectangle
+	xA = max(boxA[0], boxB[0])
+	yA = max(boxA[1], boxB[1])
+	xB = min(boxA[2], boxB[2])
+	yB = min(boxA[3], boxB[3])
+
+	# compute the area of intersection rectangle
+	interArea = abs(max((xB - xA, 0)) * max((yB - yA), 0))
+	if interArea == 0:
+		return 0
+	# compute the area of both the prediction and ground-truth
+	# rectangles
+	boxAArea = abs((boxA[2] - boxA[0]) * (boxA[3] - boxA[1]))
+	boxBArea = abs((boxB[2] - boxB[0]) * (boxB[3] - boxB[1]))
+
+	# compute the intersection over union by taking the intersection
+	# area and dividing it by the sum of prediction + ground-truth
+	# areas - the interesection area
+	iou = interArea / float(boxAArea + boxBArea - interArea)
+
+	# return the intersection over union value
+	return iou
+
+
 to_node("status","Entering main loop")
 
 last_publish_time = 0;
@@ -94,7 +119,7 @@ while True:
 			for person in person_dict.keys():
 				rect_person = convertBack(person_dict[person]["center"][0], person_dict[person]["center"][1], person_dict[person]["w_h"][0], person_dict[person]["w_h"][1])
 				
-				if contains(rect_person, rect_face):
+				if contains(rect_person, rect_face) and (bb_intersection_over_union(rect_person, rect_face) < 0.7):
 					#to_node("status", "Found object person (ID " + str(person_dict[person]["TrackID"]) + ") that contains a face (ID " + str(face["TrackID"]))
 					if "face" in person_dict[person]:
 						if not (sorted(person_dict[person]["face"].items()) == sorted(face.items())) and face["confidence"] > 0.9:
