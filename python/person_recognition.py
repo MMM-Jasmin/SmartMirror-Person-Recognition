@@ -14,6 +14,14 @@ def to_node(type, message):
 	# stdout has to be flushed manually to prevent delays in the node helper communication
 	sys.stdout.flush()
 
+maxIOFaceToPersonRating = 0.7
+confidenceTreshhold = 0.9
+last_publish_time = 0;
+minTimeBetweenPublish = 5000;
+# Result dict
+person_dict = {}
+
+
 #Full HD image as default
 IMAGE_HEIGHT = 1080
 IMAGE_WIDTH = 1920
@@ -49,8 +57,6 @@ def to_node(type, message):
 	# stdout has to be flushed manually to prevent delays in the node helper communication
 	sys.stdout.flush()
 
-# Result dict
-person_dict = {}
 
 # data structure
 # {"DETECTED_OBJECTS": [{"TrackID": 1.0, "center": [0.12593, 0.7125], "name": "chair", "w_h": [0.2463, 0.15417]}, {"TrackID": 3.0, "center": [0.18889, 0.79167], "name": "bottle", "w_h": [0.10741, 0.1724]}]}
@@ -76,10 +82,10 @@ def get_intersection_ratio(bb_a,bb_b):
 
 def bb_intersection_over_union(boxA, boxB):
 	# determine the (x, y)-coordinates of the intersection rectangle
-	xA = max(boxA[0], boxB[0])
-	yA = max(boxA[1], boxB[1])
-	xB = min(boxA[2], boxB[2])
-	yB = min(boxA[3], boxB[3])
+	xA = max(boxA[0][0], boxB[0][0])
+	yA = max(boxA[0][1], boxB[0][1])
+	xB = min(boxA[1][0], boxB[1][0])
+	yB = min(boxA[1][1], boxB[1][1])
 
 	# compute the area of intersection rectangle
 	interArea = abs(max((xB - xA, 0)) * max((yB - yA), 0))
@@ -87,8 +93,8 @@ def bb_intersection_over_union(boxA, boxB):
 		return 0
 	# compute the area of both the prediction and ground-truth
 	# rectangles
-	boxAArea = abs((boxA[2] - boxA[0]) * (boxA[3] - boxA[1]))
-	boxBArea = abs((boxB[2] - boxB[0]) * (boxB[3] - boxB[1]))
+	boxAArea = abs((boxA[1][0] - boxA[0][0]) * (boxA[1][1] - boxA[0][1]))
+	boxBArea = abs((boxB[1][0] - boxB[0][0]) * (boxB[1][1] - boxB[0][1]))
 
 	# compute the intersection over union by taking the intersection
 	# area and dividing it by the sum of prediction + ground-truth
@@ -100,8 +106,6 @@ def bb_intersection_over_union(boxA, boxB):
 
 
 to_node("status","Entering main loop")
-
-last_publish_time = 0;
 
 while True:
 
@@ -119,10 +123,10 @@ while True:
 			for person in person_dict.keys():
 				rect_person = convertBack(person_dict[person]["center"][0], person_dict[person]["center"][1], person_dict[person]["w_h"][0], person_dict[person]["w_h"][1])
 				
-				if contains(rect_person, rect_face) and (bb_intersection_over_union(rect_person, rect_face) < 0.7):
+				if contains(rect_person, rect_face) and (bb_intersection_over_union(rect_person, rect_face) < maxIOFaceToPersonRating):
 					#to_node("status", "Found object person (ID " + str(person_dict[person]["TrackID"]) + ") that contains a face (ID " + str(face["TrackID"]))
 					if "face" in person_dict[person]:
-						if not (sorted(person_dict[person]["face"].items()) == sorted(face.items())) and face["confidence"] > 0.9:
+						if not (sorted(person_dict[person]["face"].items()) == sorted(face.items())) and face["confidence"] > confidenceTreshhold:
 							person_dict[person]["face"] = face.copy()
 							changed_values = True
 				
@@ -195,6 +199,6 @@ while True:
 		
 		last_publish_time = time.time()
 		
-	if changed_values or ((last_publish_time + 5000)  < time.time()):
+	if changed_values or ((last_publish_time + minTimeBetweenPublish)  < time.time()):
 		to_node("RECOGNIZED_PERSONS", person_dict)
 		last_publish_time = time.time();
