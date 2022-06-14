@@ -40,11 +40,11 @@ module.exports = NodeHelper.create({
 		const self = this;
 		//console.log("[" + self.name + "] " + notification + " " + JSON.stringify(payload));	
 		if (notification === 'DETECTED_GESTURES'){
-			self.pyshell.send(JSON.stringify(payload));
+			self.pyshell.send(payload);
 		}else if (notification === 'DETECTED_OBJECTS'){
-			self.pyshell.send(JSON.stringify(payload));
+			self.pyshell.send(payload);
 		}else if (notification === 'DETECTED_FACES'){
-			self.pyshell.send(JSON.stringify(payload));
+			self.pyshell.send(payload);
 		}else if(notification === 'CONFIG') {
       		this.config = payload
       		if(!pythonStarted) {
