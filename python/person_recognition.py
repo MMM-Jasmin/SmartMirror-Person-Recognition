@@ -3,7 +3,7 @@ import random
 import cv2
 import json, sys
 import numpy as np
-import time
+import time, threading
 
 def to_node(type, message):
         # convert to json and print (node helper will read from stdout)
@@ -16,7 +16,6 @@ def to_node(type, message):
 
 maxIOFaceToPersonRating = 0.7
 confidenceTreshhold = 0.9
-last_publish_time = 0;
 minTimeBetweenPublish = 5000;
 # Result dict
 person_dict = {}
@@ -104,110 +103,104 @@ def bb_intersection_over_union(boxA, boxB):
         # return the intersection over union value
         return iou
 
+def check_stdin():
+        global person_dict
+        while True:
+                lines = sys.stdin.readline()
+                data = json.loads(lines)
+                if 'DETECTED_FACES' in data:
+                        dict_faces = data['DETECTED_FACES']
+                        #to_node("status", data['DETECTED_FACES'])
+                        for face in dict_faces:
 
-to_node("status","Entering main loop")
+                                rect_face = convertBack(face["center"][0], face["center"][1], face["w_h"][0], face["w_h"][1] )
 
-while True:
+                                for person in person_dict.keys():
+                                        rect_person = convertBack(person_dict[person]["center"][0], person_dict[person]["center"][1], person_dict[person]["w_h"][0], person_dict[person]["w_h"][1])
 
-        changed_values = False
-
-        lines = sys.stdin.readline()
-        data = json.loads(lines)
-        if 'DETECTED_FACES' in data:
-                dict_faces = data['DETECTED_FACES']
-                #to_node("status", data['DETECTED_FACES'])
-                for face in dict_faces:
-
-                        rect_face = convertBack(face["center"][0], face["center"][1], face["w_h"][0], face["w_h"][1] )
+                                        if contains(rect_person, rect_face) and (bb_intersection_over_union(rect_person, rect_face) < maxIOFaceToPersonRating):
+                                                #to_node("status", "Found object person (ID " + str(person_dict[person]["TrackID"]) + ") that contains a face (ID " + str(face["TrackID"]))
+                                                if "face" in person_dict[person]:
+                                                        if face["id"] is person_dict[person]["face"]["id"]:
+                                                                person_dict[person]["face"] = face.copy()
+                                                        elif face["confidence"] > confidenceTreshhold and person_dict[person]["face"]["confidence"] < 0.7:
+                                                                person_dict[person]["face"] = face.copy()
+                                                        elif face["confidence"] > (person_dict[person]["face"]["confidence"] + 0.3):
+                                                                person_dict[person]["face"] = face.copy()
+                                                        else:
+                                                                if not "center" in person_dict[person]["face"]:
+                                                                        person_dict[person]["face"]["confidence"] -= 0.05
+                                                else:
+                                                        person_dict[person]["face"] = face.copy()
 
                         for person in person_dict.keys():
+                                if "face" in person_dict[person]:
+                                        if not "center" in person_dict[person]["face"]:
+                                                continue
+                                        found = False
+                                        for face in dict_faces:
+                                                if (sorted(person_dict[person]["face"].items()) == sorted(face.items())):
+                                                        found = True
+                                        if found is False:
+                                                person_dict[person]["face"].pop("center")
+
+
+                elif 'DETECTED_GESTURES' in data:
+                        dict_gestures = data['DETECTED_GESTURES']
+                        #to_node("status", data['DETECTED_GESTURES'])
+
+                        for person in person_dict.keys():
+                                if "gestures" in person_dict[person]:
+                                        person_dict[person].pop("gestures")
+
                                 rect_person = convertBack(person_dict[person]["center"][0], person_dict[person]["center"][1], person_dict[person]["w_h"][0], person_dict[person]["w_h"][1])
 
-                                if contains(rect_person, rect_face) and (bb_intersection_over_union(rect_person, rect_face) < maxIOFaceToPersonRating):
-                                        #to_node("status", "Found object person (ID " + str(person_dict[person]["TrackID"]) + ") that contains a face (ID " + str(face["TrackID"]))
-                                        if "face" in person_dict[person]:
-                                                if face["id"] is person_dict[person]["face"]["id"]:
-                                                        person_dict[person]["face"] = face.copy()
-                                                        changed_values = True
-                                                elif face["confidence"] > confidenceTreshhold and person_dict[person]["face"]["confidence"] < 0.7:
-                                                        person_dict[person]["face"] = face.copy()
-                                                        changed_values = True
-                                                elif face["confidence"] > (person_dict[person]["face"]["confidence"] + 0.3):
-                                                        person_dict[person]["face"] = face.copy()
-                                                        changed_values = True
+                                for gesture in dict_gestures:
+
+                                        rect_gesture = convertBack(gesture["center"][0], gesture["center"][1], gesture["w_h"][0], gesture["w_h"][1])
+
+                                        ir = get_intersection_ratio(rect_person,rect_gesture)
+
+                                        if ir > 0.5:
+                                                if "gestures" in person_dict[person]:
+                                                        person_dict[person]["gestures"].append(gesture)
                                                 else:
-                                                        if not "center" in person_dict[person]["face"]:
-                                                                changed_values = True
-                                                                person_dict[person]["face"]["confidence"] -= 0.05
+                                                        person_dict[person]["gestures"] = [gesture]
+
+
+                elif 'DETECTED_OBJECTS' in data:
+                        dict_objects = data['DETECTED_OBJECTS']
+                        #to_node("status", data['DETECTED_OBJECTS'])
+
+                        new_PersonDict = {}
+                        for element in dict_objects:
+                                if element["name"] == "person":
+                                        if not element["TrackID"] in person_dict:
+                                                new_PersonDict[element["TrackID"]] = element.copy()
+
+                                                to_node("status", "new person was found")
                                         else:
-                                                person_dict[person]["face"] = face.copy()
-                                                changed_values = True
-
-                for person in person_dict.keys():
-                        if "face" in person_dict[person]:
-                                if not "center" in person_dict[person]["face"]:
-                                        continue
-                                found = False
-                                for face in dict_faces:
-                                        if (sorted(person_dict[person]["face"].items()) == sorted(face.items())):
-                                                found = True
-                                if found is False:
-                                        person_dict[person]["face"].pop("center")
-                                        changed_values = True
+                                                new_PersonDict[element["TrackID"]] = person_dict[element["TrackID"]]
+                                                if not new_PersonDict[element["TrackID"]]["center"] == element["center"]:
+                                                        new_PersonDict[element["TrackID"]]["center"] = element["center"]
+                                                if not new_PersonDict[element["TrackID"]]["w_h"] == element["w_h"]:
+                                                        new_PersonDict[element["TrackID"]]["w_h"] = element["w_h"]
 
 
-        elif 'DETECTED_GESTURES' in data:
-                dict_gestures = data['DETECTED_GESTURES']
-                #to_node("status", data['DETECTED_GESTURES'])
-
-                for person in person_dict.keys():
-                        if "gestures" in person_dict[person]:
-                                person_dict[person].pop("gestures")
-                                changed_values = True
-
-                        rect_person = convertBack(person_dict[person]["center"][0], person_dict[person]["center"][1], person_dict[person]["w_h"][0], person_dict[person]["w_h"][1])
-
-                        for gesture in dict_gestures:
-
-                                rect_gesture = convertBack(gesture["center"][0], gesture["center"][1], gesture["w_h"][0], gesture["w_h"][1])
-
-                                ir = get_intersection_ratio(rect_person,rect_gesture)
-
-                                if ir > 0.5:
-                                        if "gestures" in person_dict[person]:
-                                                person_dict[person]["gestures"].append(gesture)
-                                        else:
-                                                person_dict[person]["gestures"] = [gesture]
-                                                changed_values = True
-
-
-        elif 'DETECTED_OBJECTS' in data:
-                dict_objects = data['DETECTED_OBJECTS']
-                #to_node("status", data['DETECTED_OBJECTS'])
-
-                new_PersonDict = {}
-                for element in dict_objects:
-                        if element["name"] == "person":
-                                if not element["TrackID"] in person_dict:
-                                        new_PersonDict[element["TrackID"]] = element.copy()
-                                        changed_values = True
-                                        to_node("status", "new person was found")
-                                else:
-                                        new_PersonDict[element["TrackID"]] = person_dict[element["TrackID"]]
-                                        if not new_PersonDict[element["TrackID"]]["center"] == element["center"]:
-                                                new_PersonDict[element["TrackID"]]["center"] = element["center"]
-                                                changed_values = True
-                                        if not new_PersonDict[element["TrackID"]]["w_h"] == element["w_h"]:
-                                                new_PersonDict[element["TrackID"]]["w_h"] = element["w_h"]
-                                                changed_values = True
-
-                if not (len(new_PersonDict) == len(person_dict)):
-                        changed_values = True
 
                 person_dict = new_PersonDict
 
-                last_publish_time = time.time()
 
-        if changed_values or ((last_publish_time + minTimeBetweenPublish)  < time.time()):
-                to_node("RECOGNIZED_PERSONS", person_dict)
-                last_publish_time = time.time();
+
+to_node("status","Entering main loop")
+
+t = threading.Thread(target=check_stdin)
+t.start()
+
+
+while True:
+        to_node("RECOGNIZED_PERSONS", person_dict)
+        time.sleep(1/30)
+
+
+
