@@ -15,8 +15,7 @@ def to_node(type, message):
         sys.stdout.flush()
 
 maxIOFaceToPersonRating = 0.7
-confidenceTreshhold = 0.9
-minTimeBetweenPublish = 5000;
+confidenceTreshhold = 0.7
 # Result dict
 person_dict = {}
 
@@ -123,13 +122,12 @@ def check_stdin():
                                                 if "face" in person_dict[person]:
                                                         if face["id"] is person_dict[person]["face"]["id"]:
                                                                 person_dict[person]["face"] = face.copy()
-                                                        elif face["confidence"] > confidenceTreshhold and person_dict[person]["face"]["confidence"] < 0.7:
+                                                        elif face["confidence"] > confidenceTreshhold and person_dict[person]["face"]["confidence"] < confidenceTreshhold:
                                                                 person_dict[person]["face"] = face.copy()
-                                                        elif face["confidence"] > (person_dict[person]["face"]["confidence"] + 0.3):
+                                                        elif face["confidence"] > (person_dict[person]["face"]["confidence"] + 0.1):
                                                                 person_dict[person]["face"] = face.copy()
                                                         else:
-                                                                if not "center" in person_dict[person]["face"]:
-                                                                        person_dict[person]["face"]["confidence"] -= 0.05
+                                                                person_dict[person]["face"]["confidence"] -= 0.05
                                                 else:
                                                         person_dict[person]["face"] = face.copy()
 
