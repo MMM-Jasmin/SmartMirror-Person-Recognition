@@ -25,12 +25,12 @@ Module.register('SmartMirror-Person-Recognition',{
 	},
 
 	notificationReceived: function(notification, payload, sender) {
-		if (notification === "/gesture_det/gestures") {
-			this.sendSocketNotification('DETECTED_GESTURES', payload);
-		}else if (notification === '/face_det/json_out') {
-			this.sendSocketNotification('DETECTED_FACES', payload);
-		}else if (notification === '/object_det/objects') {
-			this.sendSocketNotification('DETECTED_OBJECTS', payload);
+		if (notification === "/gesture_det/gestures" || notification === "/gesture_det/gestures_with_distance") {
+			this.sendSocketNotification("DETECTED_GESTURES", payload);
+		}else if (notification === "/face_det/json_out") {
+			this.sendSocketNotification("DETECTED_FACES", payload);
+		}else if (notification === "/object_det/objects" || notification === "/object_det/objects_with_distance") {
+			this.sendSocketNotification("DETECTED_OBJECTS", payload);
 		}
 	},
 
