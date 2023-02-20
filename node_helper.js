@@ -16,12 +16,14 @@ module.exports = NodeHelper.create({
 		self.pyshell.on('message', function (message_string) {
 			try{
 				var message = JSON.parse(message_string)
-           		//console.log("[MSG " + self.name + "] " + message);
+           		//console.log("[MSG " + self.name + "] " + message_string);
 				if (message.hasOwnProperty('status')){
 					console.log("[" + self.name + "] " + JSON.stringify(message.status));
   				} else if (message.hasOwnProperty('RECOGNIZED_PERSONS')){
 					//console.log("[" + self.name + "] " + JSON.stringify(message));
 					self.sendSocketNotification('RECOGNIZED_PERSONS', message);
+				} else {
+					console.log("[" + self.name + "] " + message_string);
 				}
 			}
 			catch(err) {
