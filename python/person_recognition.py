@@ -191,7 +191,8 @@ def check_stdin():
                         person_dict = new_PersonDict
 
                 except:
-                        print("whoopsie!")
+                        #print("whoopsie!")
+                        pass
 
 
 
