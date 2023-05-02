@@ -129,7 +129,7 @@ def check_stdin():
                                                                 elif face["confidence"] > (person_dict[person]["face"]["confidence"] + 0.1):
                                                                         person_dict[person]["face"] = face.copy()
                                                                 else:
-                                                                        person_dict[person]["face"]["confidence"] -= 0.05
+                                                                        person_dict[person]["face"]["confidence"] -= 0.001
                                                         else:
                                                                 person_dict[person]["face"] = face.copy()
 
