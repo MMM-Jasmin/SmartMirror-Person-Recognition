@@ -18,12 +18,12 @@ module.exports = NodeHelper.create({
 				var message = JSON.parse(message_string)
            		//console.log("[MSG " + self.name + "] " + message_string);
 				if (message.hasOwnProperty('status')){
-					console.log("[" + self.name + "] " + JSON.stringify(message.status));
+					//console.log("[" + self.name + "] " + JSON.stringify(message.status));
   				} else if (message.hasOwnProperty('RECOGNIZED_PERSONS')){
 					//console.log("[" + self.name + "] " + JSON.stringify(message));
 					self.sendSocketNotification('RECOGNIZED_PERSONS', message);
 				} else {
-					console.log("[" + self.name + "] " + message_string);
+					//console.log("[" + self.name + "] " + message_string);
 				}
 			}
 			catch(err) {
